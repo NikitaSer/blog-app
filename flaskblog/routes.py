@@ -5,8 +5,9 @@ from flask import render_template, url_for, flash, redirect, request, abort
 from flaskblog.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
                              PostForm, RequestResetForm, ResetPasswordForm)
 from flaskblog.models import User, Post
-from flaskblog import app, db, bcrypt
+from flaskblog import app, db, bcrypt, mail
 from flask_login import login_user, logout_user, current_user, login_required
+from flask_mail import Message
 
 
 @app.route("/")
@@ -57,6 +58,7 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
 
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
@@ -156,13 +158,29 @@ def user_posts(username):
     return render_template('user_posts.html', posts=posts, user=user)
 
 
+def send_reset_email(user):
+    token = user.get_reset_token()
+    msg = Message('Flask-Blog password reset request',
+                  sender='noreply@demo.com',
+                  recipients=[user.email])
+    msg.body = f'''To reset your password, visit the following link:
+    
+    {url_for('reset_token', token=token, _external=True)}
+    
+    if you did not make this request simply ignore this email.
+    '''
+
+
 @app.route("/reset_password", methods=['GET', 'POST'])
 def reset_request():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     form = RequestResetForm()
-    if form.validate_on_submit()
+    if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
+        send_reset_email(user)
+        flash('An email has been send with instruction to reset your password', 'info')
+        return redirect(url_for('login'))
     return render_template('reset_request.html', title='Reset Password', form=form)
 
 
