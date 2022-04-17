@@ -165,10 +165,11 @@ def send_reset_email(user):
                   recipients=[user.email])
     msg.body = f'''To reset your password, visit the following link:
     
-    {url_for('reset_token', token=token, _external=True)}
+{url_for('reset_token', token=token, _external=True)}
     
-    if you did not make this request simply ignore this email.
-    '''
+if you did not make this request simply ignore this email.
+'''
+    mail.send(msg)
 
 
 @app.route("/reset_password", methods=['GET', 'POST'])
@@ -190,7 +191,13 @@ def reset_token(token):
         return redirect(url_for('home'))
     user = User.verify_reset_token(token=token)
     if user is None:
-        flash('The token is expired', 'warning')
+        flash('The reset password link is expired, please send forget password request again', 'warning')
         return redirect(url_for('reset_request'))
     form = ResetPasswordForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user.password = hashed_password
+        db.session.commit()
+        flash(f'Your password has been updated!', 'success')
+        return redirect(url_for('login'))
     return render_template('reset_token.html', title='Reset Password', form=form)

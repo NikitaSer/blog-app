@@ -1,8 +1,7 @@
-import datetime
-from datetime import timezone
+from datetime import datetime, timedelta
 from flaskblog import db, login_manager, app
 from flask_login import UserMixin
-from authlib.jose import jwt
+import jwt
 
 
 @login_manager.user_loader
@@ -20,10 +19,10 @@ class User(db.Model, UserMixin):
 
     def get_reset_token(self, expires_sec=1800):
         encoded_jwt = jwt.encode({'user_id': self.id,
-                                  'exp': datetime.datetime.now(tz=timezone.utc) + datetime.timedelta(
-                                      seconds=expires_sec)},
+                                  'exp': datetime.utcnow() + timedelta(seconds=expires_sec)},
                                  key=app.config['SECRET_KEY'],
                                  algorithm='HS256')
+        return encoded_jwt
 
     @staticmethod
     def verify_reset_token(token):
